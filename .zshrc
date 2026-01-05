@@ -1,10 +1,24 @@
-# Move next only if `homebrew` is installed
-if command -v brew >/dev/null 2>&1; then
-  # Load rupa's z if installed
-  [ -f $(brew --prefix)/etc/profile.d/z.sh ] && source $(brew --prefix)/etc/profile.d/z.sh
-fi
+# Path to your oh-my-zsh installation.
+export ZSH="$HOME/.oh-my-zsh"
 
-# Get operating system
+# Set theme
+ZSH_THEME="bira"
+
+# Custom folder for Oh My Zsh
+export ZSH_CUSTOM="$HOME/.config/zsh/custom"
+
+# Plugins
+plugins=(git fzf coder-tools)
+
+# Load Oh My Zsh
+source $ZSH/oh-my-zsh.sh
+
+# User configuration
+export EDITOR='vim'
+export PATH=$HOME/bin:/usr/local/bin:$PATH
+export PATH=$PATH:/opt/homebrew/bin/
+
+# Platform detection
 platform='unknown'
 unamestr=$(uname)
 if [[ $unamestr == 'Linux' ]]; then
@@ -13,34 +27,46 @@ elif [[ $unamestr == 'Darwin' ]]; then
   platform='darwin'
 fi
 
-export EDITOR='vim'
-export PATH=$HOME/bin:/usr/local/bin:$PATH:
-export PATH=$PATH:/opt/homebrew/bin/
-export PGDATA="/Users/ryanmilstead/Library/Application Support/Postgres/var-16"
-export PATH=$PATH:/Applications/Postgres.app/Contents/Versions/latest/bin
-export LDFLAGS="-L/opt/homebrew/lib"
-export CPPFLAGS="-I/opt/homebrew/include"
+# Homebrew setup (macOS)
+if command -v brew >/dev/null 2>&1; then
+  [ -f $(brew --prefix)/etc/profile.d/z.sh ] && source $(brew --prefix)/etc/profile.d/z.sh
+fi
 
-# set NPM tokem
+# Set PATH for local bin
+if [ -d "$HOME/.local/bin" ]; then
+    PATH="$HOME/.local/bin:$PATH"
+fi
 
-# must ensure this is the last exported PATH env in the entire file
+# asdf setup
+export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
+
+# macOS specific paths
+if [[ "$platform" == "darwin" ]]; then
+  export PGDATA="/Users/ryanmilstead/Library/Application Support/Postgres/var-16"
+  export PATH=$PATH:/Applications/Postgres.app/Contents/Versions/latest/bin
+  export LDFLAGS="-L/opt/homebrew/lib"
+  export CPPFLAGS="-I/opt/homebrew/include"
+  
+  if command -v brew >/dev/null 2>&1; then
+    BREW_PREFIX=$(brew --prefix)
+    if [ -d "$BREW_PREFIX/opt/openjdk/bin" ]; then
+      export PATH="$BREW_PREFIX/opt/openjdk/bin:$PATH"
+      export JAVA_HOME=$(/usr/libexec/java_home)
+    fi
+  fi
+fi
+
+# RVM (must be last PATH export)
 export PATH=$PATH:$HOME/.rvm/bin
-# Use fd and fzf to get the args to a command.
-# Works only with zsh
-# Examples:
-# f mv # To move files. You can write the destination after selecting the files.
-# f 'echo Selected:'
-# f 'echo Selected music:' --extention mp3
-# fm rm # To rm files in current directory
+
+# FZF functions
 f() {
     sels=( "${(@f)$(fd "${fd_default[@]}" "${@:2}"| fzf)}" )
     test -n "$sels" && print -z -- "$1 ${sels[@]:q:q}"
 }
 
-# Like f, but not recursive.
 fm() f "$@" --max-depth 1
 
-# fd - cd to selected directory
 fd() {
   local dir
   dir=$(find ${1:-.} -path '*/\.*' -prune \
@@ -48,14 +74,11 @@ fd() {
   cd "$dir"
 }
 
-# using ripgrep combined with preview
-# find-in-file - usage: fif <searchTerm>
 fif() {
   if [ ! "$#" -gt 0 ]; then echo "Need a string to search for!"; return 1; fi
   rg --files-with-matches --no-messages "$1" | fzf --preview "highlight -O ansi -l {} 2> /dev/null | rg --colors 'match:bg:yellow' --ignore-case --pretty --context 10 '$1' || rg --ignore-case --pretty --context 10 '$1' {}"
 }
 
-# fkill - kill processes - list only the ones you can kill. Modified the earlier script.
 fkill() {
     local pid
     if [ "$UID" != "0" ]; then
@@ -70,9 +93,6 @@ fkill() {
     fi
 }
 
-# Modified version where you can press
-#   - CTRL-O to open with `open` command,
-#   - CTRL-E or Enter key to open with the $EDITOR
 fo() (
   IFS=$'\n' out=("$(fzf-tmux --query="$1" --exit-0 --expect=ctrl-o,ctrl-e)")
   key=$(head -1 <<< "$out")
@@ -88,7 +108,6 @@ fgb() (
   git switch $branch
 )
 
-# FZF pretty git diff
 fgd() {
   preview="git diff $@ --color=always -- {-1}"
   git diff $@ --name-only | fzf -m --ansi --preview $preview
@@ -108,16 +127,12 @@ gch() {
   git rev-parse HEAD > /dev/null 2>&1 || return
 
   local branch
-
   branch=$(fzf-git-branch)
   if [[ "$branch" = "" ]]; then
       echo "No branch selected."
       return
   fi
 
-  # If branch name starts with 'remotes/' then it is a remote branch. By
-  # using --track and a remote branch name, it is the same as:
-  # git checkout -b branchName --track origin/branchName
   if [[ "$branch" = 'remotes/'* ]]; then
       git checkout --track $branch
   else
@@ -125,38 +140,40 @@ gch() {
   fi
 }
 
-# PS
+# Aliases - Process management
 alias psa="ps aux"
 alias psg="ps aux | ag "
 alias psr='ps aux | ag ruby'
 
-# Moving around
+# Aliases - Navigation
 alias cdb='cd -'
 alias cls='clear;ls'
 alias -g ...='../..'
 alias -g ....='../../..'
 alias -g .....='../../../..'
 
+# Aliases - Better ls with eza
 alias ls='eza --icons --group-directories-first'
 alias ll='eza -l --icons --no-user --group-directories-first  --time-style long-iso'
 alias la='eza -la --icons --no-user --group-directories-first  --time-style long-iso'
 alias reload='source ~/.zshrc'
 
-alias showFiles='defaults write com.apple.finder AppleShowAllFiles YES; killall Finder /System/Library/CoreServices/Finder.app'
-alias hideFiles='defaults write com.apple.finder AppleShowAllFiles NO; killall Finder /System/Library/CoreServices/Finder.app'
+# Aliases - macOS Finder
+if [[ "$platform" == "darwin" ]]; then
+  alias showFiles='defaults write com.apple.finder AppleShowAllFiles YES; killall Finder /System/Library/CoreServices/Finder.app'
+  alias hideFiles='defaults write com.apple.finder AppleShowAllFiles NO; killall Finder /System/Library/CoreServices/Finder.app'
+  alias brewu='brew update && brew upgrade && brew cleanup && brew doctor'
+  alias bup="brew upgrade && brew update"
+fi
 
-alias brewu='brew update && brew upgrade && brew cleanup && brew doctor'
-alias bup="brew upgrade && brew update"
-
-# zsh profile editing
+# Aliases - Shell config
 alias ze="$EDITOR ~/.zshrc"
 alias zr="source ~/.zshrc"
 
-# *********************
-# Rebase workflow
-alias rboc='git ls-files -m | xargs ls -1 2>/dev/null | grep '\.rb$' | xargs rubocop -c /Users/ryanmilstead/Healthie/web/.gpshcop.yml --force-exclusion'
-alias rboca=rboc --auto-correct
+# Aliases - Search
 alias as="alias | ag"
+
+# Aliases - Git
 alias gs='git status'
 alias gj='git jump'
 alias gfc='git clone'
@@ -165,15 +182,6 @@ alias gstsh='git stash'
 alias gst=gs
 alias gsp='git stash pop'
 alias gsa='git stash apply'
-#alias gsh='git show'
-#alias gshw='git show'
-#alias gshow='git show'
-#alias gi='vim .gitignore'
-#alias gcm='git ci -m'
-#alias gcim='git ci -m'
-#alias gci='git ci'
-#alias gco='git co'
-#alias gcp='git cp'
 alias gc='git commit -v'
 alias gc!='git commit -v --amend'
 alias gcn!='git commit -v --no-edit --amend'
@@ -186,62 +194,24 @@ alias gcas='git commit -a -s'
 alias gcasm='git commit -a -s -m'
 alias gcsm='git commit -s -m'
 alias ga='git add -A'
-#alias gap='git add -p'
-#alias guns='git unstage'
-#alias gunc='git uncommit'
-#alias gm='git merge'
-#alias gms='git merge --squash'
-#alias gam='git amend --reset-author'
-#alias grv='git remote -v'
-#alias grr='git remote rm'
-#alias grad='git remote add'
-#alias gr='git rebase'
-#alias gra='git rebase --abort'
-#alias ggrc='git rebase --continue'
-#alias gbi='git rebase --interactive'
-#alias gl='git l'
-#alias glg='git l'
-#alias glog='git l'
-#alias co='git co'
-#alias gf='git fetch'
-#alias gfp='git fetch --prune'
-#alias gfa='git fetch --all'
-#alias gfap='git fetch --all --prune'
-#alias gfch='git fetch'
 alias gd=fgd
-#alias gb='git b'
-## Staged and cached are the same thing
-#alias gdc='git diff --cached -w'
-#alias gds='git diff --staged -w'
-#alias gpub='grb publish'
-#alias gtr='grb track'
 alias gpl='git pull --rebase --autostash'
-#alias gplr='git pull --rebase'
 alias gps='git push'
 alias gpf='git push --force-with-lease'
 alias gpsh='git push -u origin `git rev-parse --abbrev-ref HEAD`'
-alias gnb='git nb' # new branch aka checkout -b
-#alias grs='git reset'
+alias gnb='git nb'
 alias grsh='git reset --hard'
-#alias gcln='git clean'
-#alias gclndf='git clean -df'
-#alias gclndfx='git clean -dfx'
-#alias gsm='git submodule'
-#alias gsmi='git submodule init'
-#alias gsmu='git submodule update'
-#alias gt='git t'
-#alias gbg='git bisect good'
-#alias gbb='git bisect bad'
 alias gdmb='git branch --merged | grep -v "\*" | xargs -n 1 git branch -d'
 alias grbm='git pull origin staging --rebase --autostash'
 alias gcm='git checkout staging'
 alias cl='clear'
 alias lg='lazygit'
 
-# Ruby
+# Aliases - Ruby
 alias be='bundle exec'
 alias bi='bundle install'
 alias c='rails c'
 alias rs='be rails s'
 
-export PATH="$HOME/.local/bin:$PATH"
+setopt no_share_history
+unsetopt share_history
