@@ -18,14 +18,6 @@ if ! command -v fzf &> /dev/null; then
   ~/.fzf/install --key-bindings --completion --no-update-rc
 fi
 
-# Install rbenv if not present
-if ! command -v rbenv &> /dev/null; then
-  echo "📦 Installing rbenv..."
-  git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-  echo "📦 Installing ruby-build plugin..."
-  git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-fi
-
 # Install eza if not present (modern ls replacement)
 if ! command -v eza &> /dev/null; then
   echo "📦 Installing eza..."
