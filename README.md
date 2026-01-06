@@ -1,6 +1,6 @@
 # Coder Dotfiles
 
-Personal dotfiles configuration for [Coder](https://coder.com) workspaces.
+Personal dotfiles configuration for [Coder](https://coder.com) workspaces. Fork this repo if you want to use it for your own coder workspaces
 
 ## Usage
 
