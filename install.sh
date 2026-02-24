@@ -68,11 +68,11 @@ git config --global rerere.enabled true
 
 # Install tools based on OS
 case "${unameOut}" in
-  Linux*)     
+  Linux*)
     echo "📦 Installing packages for Linux..."
     sudo apt-get update
     sudo apt install -y ripgrep fd-find zsh
-    
+
     # Create fd symlink if needed
     if command -v fdfind &> /dev/null && ! command -v fd &> /dev/null; then
       sudo ln -s $(which fdfind) /usr/local/bin/fd
@@ -96,8 +96,34 @@ case "${unameOut}" in
       sudo apt-get update
       sudo apt-get install -y eza
     fi
+
+    # Install lazygit
+    if ! command -v lazygit &> /dev/null; then
+      echo "📦 Installing lazygit..."
+      LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+      curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+      tar xf lazygit.tar.gz lazygit
+      sudo install lazygit /usr/local/bin
+      rm lazygit lazygit.tar.gz
+      echo "✅ lazygit installed"
+    fi
+
+    # Install git-jump
+    if ! command -v git-jump &> /dev/null; then
+      echo "📦 Installing git-jump..."
+      sudo curl -o /usr/local/bin/git-jump https://raw.githubusercontent.com/git/git/master/contrib/git-jump/git-jump
+      sudo chmod +x /usr/local/bin/git-jump
+      echo "✅ git-jump installed"
+    fi
+
+    # Install Claude Code CLI
+    if ! command -v claude &> /dev/null; then
+      echo "📦 Installing Claude Code CLI..."
+      curl -fsSL https://raw.githubusercontent.com/anthropics/anthropic-quickstarts/main/computer-use-demo/install.sh | zsh
+      echo "✅ Claude Code CLI installed"
+    fi
     ;;
-  Darwin*)   
+  Darwin*)
     echo "📦 Installing packages for macOS..."
     if command -v brew &> /dev/null; then
       brew install ripgrep fd zsh
@@ -117,6 +143,28 @@ case "${unameOut}" in
     if ! command -v eza &> /dev/null; then
       echo "📦 Installing eza..."
       brew install eza
+    fi
+
+    # Install lazygit
+    if ! command -v lazygit &> /dev/null; then
+      echo "📦 Installing lazygit..."
+      brew install lazygit
+      echo "✅ lazygit installed"
+    fi
+
+    # Install git-jump
+    if ! command -v git-jump &> /dev/null; then
+      echo "📦 Installing git-jump..."
+      curl -o /usr/local/bin/git-jump https://raw.githubusercontent.com/git/git/master/contrib/git-jump/git-jump
+      chmod +x /usr/local/bin/git-jump
+      echo "✅ git-jump installed"
+    fi
+
+    # Install Claude Code CLI
+    if ! command -v claude &> /dev/null; then
+      echo "📦 Installing Claude Code CLI..."
+      curl -fsSL https://claude.ai/install.sh | zsh
+      echo "✅ Claude Code CLI installed"
     fi
     ;;
 esac
@@ -162,12 +210,12 @@ fi
 # Install asdf plugins if asdf is available
 if command -v asdf &> /dev/null; then
   echo "📦 Installing asdf plugins..."
-  
+
   # Add plugins if not already added
   asdf plugin add neovim 2>/dev/null || true
   asdf plugin add ruby 2>/dev/null || true
   asdf plugin add nodejs 2>/dev/null || true
-  
+
   echo "✅ asdf plugins configured"
   echo "ℹ️  Run 'asdf install' to install versions from .tool-versions"
 fi
