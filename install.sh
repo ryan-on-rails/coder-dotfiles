@@ -109,17 +109,16 @@ case "${unameOut}" in
     fi
 
     # Install git-jump
-    if ! command -v git-jump &> /dev/null; then
-      echo "📦 Installing git-jump..."
-      sudo curl -o /usr/local/bin/git-jump https://raw.githubusercontent.com/git/git/master/contrib/git-jump/git-jump
-      sudo chmod +x /usr/local/bin/git-jump
-      echo "✅ git-jump installed"
+    if ! command -v git jump &> /dev/null; then
+      echo "📦 Installing git jump..."
+      npm instal -g git-jump
+      echo "✅ git jump installed"
     fi
 
     # Install Claude Code CLI
     if ! command -v claude &> /dev/null; then
       echo "📦 Installing Claude Code CLI..."
-      curl -fsSL https://raw.githubusercontent.com/anthropics/anthropic-quickstarts/main/computer-use-demo/install.sh | zsh
+      curl -fsSL https://claude.ai/install.sh | zsh
       echo "✅ Claude Code CLI installed"
     fi
     ;;
@@ -155,8 +154,7 @@ case "${unameOut}" in
     # Install git-jump
     if ! command -v git-jump &> /dev/null; then
       echo "📦 Installing git-jump..."
-      curl -o /usr/local/bin/git-jump https://raw.githubusercontent.com/git/git/master/contrib/git-jump/git-jump
-      chmod +x /usr/local/bin/git-jump
+      npm instal -g git-jump
       echo "✅ git-jump installed"
     fi
 
