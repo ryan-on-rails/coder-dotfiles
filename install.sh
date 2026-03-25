@@ -166,7 +166,7 @@ fi
 # Install Claude Code CLI (node is available via asdf shims)
 if ! command -v claude &> /dev/null; then
   echo "📦 Installing Claude Code CLI..."
-  curl -fsSL https://claude.ai/install.sh | sh
+  curl -fsSL https://claude.ai/install.sh | zsh
   echo "✅ Claude Code CLI installed"
 fi
 
