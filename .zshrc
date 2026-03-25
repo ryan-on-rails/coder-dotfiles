@@ -14,7 +14,7 @@ plugins=(git fzf coder-tools)
 source $ZSH/oh-my-zsh.sh
 
 # User configuration
-export EDITOR='vim'
+export EDITOR='nvim'
 export PATH=$HOME/bin:/usr/local/bin:$PATH
 export PATH=$PATH:/opt/homebrew/bin/
 

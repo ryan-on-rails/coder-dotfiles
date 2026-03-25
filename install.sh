@@ -3,7 +3,6 @@ set -e
 
 echo "🚀 Starting Coder workspace dotfiles installation..."
 
-# Get the OS type
 unameOut="$(uname -s)"
 
 # Copy config files
@@ -14,17 +13,22 @@ if [ -d ".config" ]; then
   echo "✅ Copied .config directory"
 fi
 
+# Copy .claude config — commands and skills are always synced (additive);
+# CLAUDE.md and settings.json only written if not already present (preserves customizations)
+if [ -d ".claude" ]; then
+  mkdir -p "$HOME/.claude/commands" "$HOME/.claude/skills"
+  [ -d ".claude/commands" ] && cp -ra .claude/commands/. "$HOME/.claude/commands/"
+  [ -d ".claude/skills" ] && cp -ra .claude/skills/. "$HOME/.claude/skills/"
+  [ ! -f "$HOME/.claude/CLAUDE.md" ] && cp .claude/CLAUDE.md "$HOME/.claude/CLAUDE.md"
+  [ ! -f "$HOME/.claude/settings.json" ] && cp .claude/settings.json "$HOME/.claude/settings.json"
+  echo "✅ Configured .claude directory"
+fi
+
 if [ -d ".local/bin" ]; then
   mkdir -p "$HOME/.local/bin"
   cp -a .local/bin/* "$HOME/.local/bin/"
   chmod +x "$HOME/.local/bin/"*
   echo "✅ Copied .local/bin scripts"
-fi
-
-# Copy asdf config files
-if [ -f ".asdfrc" ]; then
-  cp .asdfrc "$HOME/.asdfrc"
-  echo "✅ Copied .asdfrc"
 fi
 
 if [ -f ".tool-versions" ]; then
@@ -40,21 +44,15 @@ fi
 ln -sf "$(pwd)/.zshrc" "$HOME/.zshrc"
 echo "✅ Linked .zshrc"
 
-# Add local bin to path
-if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-  export PATH="$PATH:$HOME/.local/bin"
-fi
+export PATH="$HOME/.local/bin:$HOME/.asdf/shims:$PATH"
 
 # Add git aliases
 add_git_alias() {
   local alias_name="$1"
   local git_command="$2"
-
-  if git config --global --get "alias.$alias_name" > /dev/null; then
+  if git config --global --get "alias.$alias_name" > /dev/null 2>&1; then
     echo "Git alias '$alias_name' already exists."
-    return
   else
-    echo "Adding git alias '$alias_name' for '$git_command'."
     git config --global "alias.$alias_name" "$git_command"
   fi
 }
@@ -66,104 +64,78 @@ add_git_alias "st" "status"
 add_git_alias "lg" "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 git config --global rerere.enabled true
 
-# Install tools based on OS
 case "${unameOut}" in
   Linux*)
     echo "📦 Installing packages for Linux..."
-    sudo apt-get update
-    sudo apt install -y ripgrep fd-find zsh
+    # cloud-init already ran apt-get update, skip it if packages are present
+    if ! command -v rg &> /dev/null || ! command -v fd &> /dev/null; then
+      sudo apt-get update -qq
+      sudo apt-get install -y --no-install-recommends ripgrep fd-find
+    fi
 
-    # Create fd symlink if needed
+    # fd symlink
     if command -v fdfind &> /dev/null && ! command -v fd &> /dev/null; then
-      sudo ln -s $(which fdfind) /usr/local/bin/fd
+      sudo ln -sf "$(which fdfind)" /usr/local/bin/fd
     fi
 
-    # Install asdf
-    if [[ -z `command -v asdf` ]]; then
-      echo "📦 Installing asdf..."
-      curl -LO https://github.com/asdf-vm/asdf/releases/download/v0.16.6/asdf-v0.16.6-linux-amd64.tar.gz
-      tar xzf asdf-v0.16.6-linux-amd64.tar.gz -C $HOME/.local/bin
-      rm asdf-v0.16.6-linux-amd64.tar.gz
-    fi
-
-    # Install eza
+    # eza — direct binary, avoids GPG+apt repo setup (~2 min saved)
     if ! command -v eza &> /dev/null; then
       echo "📦 Installing eza..."
-      sudo mkdir -p /etc/apt/keyrings
-      wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | sudo gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
-      echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | sudo tee /etc/apt/sources.list.d/gierens.list
-      sudo chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
-      sudo apt-get update
-      sudo apt-get install -y eza
+      curl -fsSLo /tmp/eza.tar.gz \
+        "https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-musl.tar.gz"
+      tar -xzf /tmp/eza.tar.gz -C ~/.local/bin eza
+      rm /tmp/eza.tar.gz
+      echo "✅ eza installed"
     fi
 
-    # Install lazygit
+    # lazygit
     if ! command -v lazygit &> /dev/null; then
       echo "📦 Installing lazygit..."
-      LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
-      curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
-      tar xf lazygit.tar.gz lazygit
-      sudo install lazygit /usr/local/bin
-      rm lazygit lazygit.tar.gz
+      LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" \
+        | grep -Po '"tag_name": "v\K[^"]*')
+      curl -fsSLo /tmp/lazygit.tar.gz \
+        "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+      tar -xf /tmp/lazygit.tar.gz -C /tmp lazygit
+      sudo install /tmp/lazygit /usr/local/bin
+      rm /tmp/lazygit /tmp/lazygit.tar.gz
       echo "✅ lazygit installed"
     fi
 
-    # Install git-jump
-    if ! command -v git jump &> /dev/null; then
-      echo "📦 Installing git jump..."
-      npm instal -g git-jump
-      echo "✅ git jump installed"
+    # asdf — skip install if already present (prebuild AMI has it)
+    if ! command -v asdf &> /dev/null; then
+      echo "📦 Installing asdf..."
+      latest_tag=$(curl -s "https://api.github.com/repos/asdf-vm/asdf/releases/latest" | grep -Po '"tag_name": "\K[^"]*')
+      curl -fsSLo /tmp/asdf.tar.gz \
+        "https://github.com/asdf-vm/asdf/releases/download/${latest_tag}/asdf-${latest_tag}-linux-amd64.tar.gz"
+      tar -xzf /tmp/asdf.tar.gz -C ~/.local/bin
+      rm /tmp/asdf.tar.gz
+      echo "✅ asdf installed"
     fi
 
-    # Install Claude Code CLI
-    if ! command -v claude &> /dev/null; then
-      echo "📦 Installing Claude Code CLI..."
-      curl -fsSL https://claude.ai/install.sh | zsh
-      echo "✅ Claude Code CLI installed"
-    fi
+    # Add asdf plugins and install tools not already present
+    asdf plugin add neovim 2>/dev/null || true
+    asdf plugin add kubectl 2>/dev/null || true
+    # Install only — skips tools already compiled in the prebuild AMI
+    asdf install
+    echo "✅ asdf tools installed"
     ;;
   Darwin*)
     echo "📦 Installing packages for macOS..."
     if command -v brew &> /dev/null; then
-      brew install ripgrep fd zsh
+      brew install ripgrep fd eza lazygit
     else
       echo "⚠️  Homebrew not found. Please install brew first."
     fi
 
-    # Install asdf
-    if [[ -z `command -v asdf` ]]; then
+    if ! command -v asdf &> /dev/null; then
       echo "📦 Installing asdf..."
-      curl -LO https://github.com/asdf-vm/asdf/releases/download/v0.16.6/asdf-v0.16.6-darwin-arm64.tar.gz
-      tar xzf asdf-v0.16.6-darwin-arm64.tar.gz -C $HOME/.local/bin
+      curl -LO "https://github.com/asdf-vm/asdf/releases/download/v0.16.6/asdf-v0.16.6-darwin-arm64.tar.gz"
+      tar xzf asdf-v0.16.6-darwin-arm64.tar.gz -C "$HOME/.local/bin"
       rm asdf-v0.16.6-darwin-arm64.tar.gz
     fi
 
-    # Install eza via brew
-    if ! command -v eza &> /dev/null; then
-      echo "📦 Installing eza..."
-      brew install eza
-    fi
-
-    # Install lazygit
-    if ! command -v lazygit &> /dev/null; then
-      echo "📦 Installing lazygit..."
-      brew install lazygit
-      echo "✅ lazygit installed"
-    fi
-
-    # Install git-jump
-    if ! command -v git-jump &> /dev/null; then
-      echo "📦 Installing git-jump..."
-      npm instal -g git-jump
-      echo "✅ git-jump installed"
-    fi
-
-    # Install Claude Code CLI
-    if ! command -v claude &> /dev/null; then
-      echo "📦 Installing Claude Code CLI..."
-      curl -fsSL https://claude.ai/install.sh | zsh
-      echo "✅ Claude Code CLI installed"
-    fi
+    asdf plugin add neovim 2>/dev/null || true
+    asdf install
     ;;
 esac
 
@@ -171,28 +143,16 @@ esac
 ZSH_PATH=$(command -v zsh)
 if [[ -n "$ZSH_PATH" && "$SHELL" != "$ZSH_PATH" ]]; then
   echo "Setting Zsh as default shell..."
-  if command -v sudo > /dev/null; then
-    sudo chsh -s "$ZSH_PATH" "$(whoami)"
-  else
-    chsh -s "$ZSH_PATH"
-  fi
+  sudo chsh -s "$ZSH_PATH" "$(whoami)" 2>/dev/null || chsh -s "$ZSH_PATH"
   echo "✅ Default shell set to Zsh"
-else
-  echo "✅ Zsh is already the default shell"
 fi
 
 # Install Oh My Zsh
-OHMYZSH_DIR="$HOME/.oh-my-zsh"
-if [ -d "$OHMYZSH_DIR" ]; then
-  echo "✅ Oh My Zsh is already installed"
-else
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
   echo "📦 Installing Oh My Zsh..."
-  if command -v curl > /dev/null; then
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended --keep-zshrc
-    echo "✅ Oh My Zsh installed successfully"
-  else
-    echo "⚠️  curl not found. Cannot install Oh My Zsh"
-  fi
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
+    "" --unattended --keep-zshrc
+  echo "✅ Oh My Zsh installed"
 fi
 
 # Install FZF
@@ -201,27 +161,21 @@ if ! command -v fzf &> /dev/null; then
   git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
   ~/.fzf/install --key-bindings --completion --no-update-rc
   echo "✅ FZF installed"
-else
-  echo "✅ FZF is already installed"
 fi
 
-# Install asdf plugins if asdf is available
-if command -v asdf &> /dev/null; then
-  echo "📦 Installing asdf plugins..."
+# Install Claude Code CLI (node is available via asdf shims)
+if ! command -v claude &> /dev/null; then
+  echo "📦 Installing Claude Code CLI..."
+  curl -fsSL https://claude.ai/install.sh | sh
+  echo "✅ Claude Code CLI installed"
+fi
 
-  # Add plugins if not already added
-  asdf plugin add neovim 2>/dev/null || true
-  asdf plugin add ruby 2>/dev/null || true
-  asdf plugin add nodejs 2>/dev/null || true
-
-  echo "✅ asdf plugins configured"
-  echo "ℹ️  Run 'asdf install' to install versions from .tool-versions"
+# Install git-jump
+if ! npm list -g git-jump &> /dev/null 2>&1; then
+  npm install -g git-jump
+  echo "✅ git-jump installed"
 fi
 
 echo ""
 echo "✨ Dotfiles installation complete!"
-echo "🔄 Run 'source ~/.zshrc' or restart your shell to apply changes"
-echo ""
-echo "Next steps:"
-echo "  1. If asdf was installed, run: asdf install"
-echo "  2. Restart your terminal or run: exec zsh"
+echo "🔄 Restart your shell or run: exec zsh"

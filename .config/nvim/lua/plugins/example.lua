@@ -1,0 +1,11 @@
+-- Add your custom plugins here
+-- Example:
+-- return {
+--   {
+--     "folke/which-key.nvim",
+--     opts = {
+--       -- your config here
+--     },
+--   },
+-- }
+return {}
