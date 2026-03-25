@@ -81,10 +81,10 @@ case "${unameOut}" in
     # eza — direct binary, avoids GPG+apt repo setup (~2 min saved)
     if ! command -v eza &> /dev/null; then
       echo "📦 Installing eza..."
-      curl -fsSLo /tmp/eza.tar.gz \
-        "https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-musl.tar.gz"
-      tar -xzf /tmp/eza.tar.gz -C ~/.local/bin eza
-      rm /tmp/eza.tar.gz
+      curl -fsSL \
+        "https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-gnu.tar.gz" \
+        | tar -xz -C ~/.local/bin eza
+      chmod +x ~/.local/bin/eza
       echo "✅ eza installed"
     fi
 
