@@ -61,5 +61,6 @@
       "Bash(chown *)"
     ]
   },
-  "outputStyle": "explanatory"
+  "outputStyle": "explanatory",
+  "includeCoAuthoredBy": false
 }
