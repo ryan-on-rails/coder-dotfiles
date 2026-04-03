@@ -9,7 +9,7 @@ unameOut="$(uname -s)"
 echo "📦 Copying configuration files..."
 if [ -d ".config" ]; then
   mkdir -p "$HOME/.config"
-  cp -ra .config/* "$HOME/.config/"
+  cp -a .config/* "$HOME/.config/"
   echo "✅ Copied .config directory"
 fi
 
@@ -17,8 +17,8 @@ fi
 # CLAUDE.md and settings.json only written if not already present (preserves customizations)
 if [ -d ".claude" ]; then
   mkdir -p "$HOME/.claude/commands" "$HOME/.claude/skills"
-  [ -d ".claude/commands" ] && cp -ra .claude/commands/. "$HOME/.claude/commands/"
-  [ -d ".claude/skills" ] && cp -ra .claude/skills/. "$HOME/.claude/skills/"
+  [ -d ".claude/commands" ] && cp -a .claude/commands/. "$HOME/.claude/commands/"
+  [ -d ".claude/skills" ] && cp -a .claude/skills/. "$HOME/.claude/skills/"
   [ ! -f "$HOME/.claude/CLAUDE.md" ] && cp .claude/CLAUDE.md "$HOME/.claude/CLAUDE.md"
   [ ! -f "$HOME/.claude/settings.json" ] && cp .claude/settings.json "$HOME/.claude/settings.json"
   echo "✅ Configured .claude directory"
