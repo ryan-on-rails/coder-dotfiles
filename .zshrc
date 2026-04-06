@@ -17,7 +17,7 @@ fi
 
 # Homebrew setup (macOS)
 if command -v brew >/dev/null 2>&1; then
-  [ -f $(brew --prefix)/etc/profile.d/z.sh ] && source $(brew --prefix)/etc/profile.d/z.sh
+  [ -f "$(brew --prefix)/etc/profile.d/z.sh" ] && source "$(brew --prefix)/etc/profile.d/z.sh"
 fi
 
 # Set PATH for local bin
@@ -52,12 +52,13 @@ autoload -Uz compinit && compinit
 
 # Prompt with git branch via vcs_info
 autoload -Uz vcs_info
-precmd() { vcs_info }
+precmd_functions+=(vcs_info)
+setopt PROMPT_SUBST
 zstyle ':vcs_info:git:*' formats ' (%b)'
 PROMPT='%F{cyan}%n@%m%f:%F{yellow}%~%f%F{green}${vcs_info_msg_0_}%f %# '
 
 # fzf key bindings and completion
-eval "$(fzf --zsh)"
+command -v fzf >/dev/null 2>&1 && eval "$(fzf --zsh)"
 
 # coder-tools plugin
 [ -f "$HOME/.config/zsh/custom/plugins/coder-tools/coder-tools.plugin.zsh" ] && \
@@ -71,7 +72,7 @@ f() {
 
 fm() f "$@" --max-depth 1
 
-fd() {
+fcd() {
   local dir
   dir=$(find ${1:-.} -path '*/\.*' -prune \
                   -o -type d -print 2> /dev/null | fzf +m) &&
@@ -158,8 +159,8 @@ alias -g .....='../../../..'
 
 # Aliases - ls
 alias ls='ls --color=auto'
-alias ll='ls -lh --color=auto'
-alias la='ls -lah --color=auto'
+alias ll='\ls -lh --color=auto'
+alias la='\ls -lah --color=auto'
 alias reload='source ~/.zshrc'
 
 # Aliases - macOS Finder
