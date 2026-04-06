@@ -77,17 +77,24 @@ if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
   source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 fi
 
+# Verify nix binary is available after sourcing daemon profile
+if ! command -v nix &> /dev/null; then
+  echo "❌ 'nix' not found after sourcing daemon profile — Nix install may have failed"
+  exit 1
+fi
+
 # Wait for Nix daemon socket to be ready (needed after fresh install)
-if ! command -v nix &> /dev/null || ! nix store ping &> /dev/null 2>&1; then
+if ! nix store ping &> /dev/null; then
   echo "⏳ Waiting for Nix daemon..."
   for i in $(seq 1 30); do
-    nix store ping &> /dev/null 2>&1 && break
+    nix store ping &> /dev/null && break
     sleep 1
   done
-  nix store ping &> /dev/null 2>&1 || { echo "❌ Nix daemon did not start"; exit 1; }
+  nix store ping &> /dev/null || { echo "❌ Nix daemon did not start"; exit 1; }
 fi
 
 # Install tools from flake (run from dotfiles repo root — script must be invoked from repo root)
+# "dotfiles-tools" matches the name = "dotfiles-tools" field in flake.nix — update both if renamed
 if ! nix profile list 2>/dev/null | grep -q "dotfiles-tools"; then
   echo "📦 Installing tools via Nix..."
   nix profile install .#default
