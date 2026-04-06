@@ -64,30 +64,27 @@ add_git_alias "st" "status"
 add_git_alias "lg" "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 git config --global rerere.enabled true
 
+# Install Nix via Determinate Systems (idempotent — skips if already installed)
+if ! command -v nix &> /dev/null; then
+  echo "📦 Installing Nix (Determinate Systems)..."
+  curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
+    | sh -s -- install --no-confirm
+  echo "✅ Nix installed"
+fi
+
+# Source Nix daemon profile so `nix` is available in this shell session
+if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+  source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+fi
+
+# Install tools from flake (run from dotfiles repo root)
+echo "📦 Installing tools via Nix..."
+nix profile install .#default
+echo "✅ Nix tools installed"
+
 case "${unameOut}" in
   Linux*)
     echo "📦 Installing packages for Linux..."
-    # cloud-init already ran apt-get update, skip it if packages are present
-    if ! command -v rg &> /dev/null || ! command -v fd &> /dev/null; then
-      sudo apt-get update -qq
-      sudo apt-get install -y --no-install-recommends ripgrep fd-find
-    fi
-
-    # fd symlink
-    if command -v fdfind &> /dev/null && ! command -v fd &> /dev/null; then
-      sudo ln -sf "$(which fdfind)" /usr/local/bin/fd
-    fi
-
-    # eza — direct binary, avoids GPG+apt repo setup (~2 min saved)
-    if ! command -v eza &> /dev/null; then
-      echo "📦 Installing eza..."
-      curl -fsSL \
-        "https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-gnu.tar.gz" \
-        | tar -xz -C ~/.local/bin eza
-      chmod +x ~/.local/bin/eza
-      echo "✅ eza installed"
-    fi
-
     # lazygit
     if ! command -v lazygit &> /dev/null; then
       echo "📦 Installing lazygit..."
@@ -112,21 +109,12 @@ case "${unameOut}" in
       echo "✅ asdf installed"
     fi
 
-    # Add asdf plugins and install tools not already present
-    asdf plugin add neovim 2>/dev/null || true
-    asdf plugin add kubectl 2>/dev/null || true
     # Install only — skips tools already compiled in the prebuild AMI
     asdf install
     echo "✅ asdf tools installed"
     ;;
   Darwin*)
     echo "📦 Installing packages for macOS..."
-    if command -v brew &> /dev/null; then
-      brew install ripgrep fd eza lazygit
-    else
-      echo "⚠️  Homebrew not found. Please install brew first."
-    fi
-
     if ! command -v asdf &> /dev/null; then
       echo "📦 Installing asdf..."
       curl -LO "https://github.com/asdf-vm/asdf/releases/download/v0.16.6/asdf-v0.16.6-darwin-arm64.tar.gz"
@@ -134,34 +122,9 @@ case "${unameOut}" in
       rm asdf-v0.16.6-darwin-arm64.tar.gz
     fi
 
-    asdf plugin add neovim 2>/dev/null || true
     asdf install
     ;;
 esac
-
-# Set zsh as default shell
-ZSH_PATH=$(command -v zsh)
-if [[ -n "$ZSH_PATH" && "$SHELL" != "$ZSH_PATH" ]]; then
-  echo "Setting Zsh as default shell..."
-  sudo chsh -s "$ZSH_PATH" "$(whoami)" 2>/dev/null || chsh -s "$ZSH_PATH"
-  echo "✅ Default shell set to Zsh"
-fi
-
-# Install Oh My Zsh
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
-  echo "📦 Installing Oh My Zsh..."
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
-    "" --unattended --keep-zshrc
-  echo "✅ Oh My Zsh installed"
-fi
-
-# Install FZF
-if ! command -v fzf &> /dev/null; then
-  echo "📦 Installing fzf..."
-  git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-  ~/.fzf/install --key-bindings --completion --no-update-rc
-  echo "✅ FZF installed"
-fi
 
 # Install Claude Code CLI (node is available via asdf shims)
 if ! command -v claude &> /dev/null; then
