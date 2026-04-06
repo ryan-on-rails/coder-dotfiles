@@ -3,7 +3,7 @@
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-  outputs = { self, nixpkgs, ... }:
+  outputs = { nixpkgs, ... }:
     let
       systems = [ "x86_64-linux" "aarch64-darwin" ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
@@ -19,6 +19,8 @@
             neovim
             kubectl
           ];
+          pathsToLink = [ "/bin" "/share/man" "/share/doc" ];
+          ignoreCollisions = false;
         };
       });
     };
