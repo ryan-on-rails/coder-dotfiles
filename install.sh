@@ -77,27 +77,28 @@ if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
   source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 fi
 
-# Install tools from flake (run from dotfiles repo root)
-echo "📦 Installing tools via Nix..."
-nix profile install .#default
-echo "✅ Nix tools installed"
+# Wait for Nix daemon socket to be ready (needed after fresh install)
+if ! command -v nix &> /dev/null || ! nix store ping &> /dev/null 2>&1; then
+  echo "⏳ Waiting for Nix daemon..."
+  for i in $(seq 1 30); do
+    nix store ping &> /dev/null 2>&1 && break
+    sleep 1
+  done
+  nix store ping &> /dev/null 2>&1 || { echo "❌ Nix daemon did not start"; exit 1; }
+fi
+
+# Install tools from flake (run from dotfiles repo root — script must be invoked from repo root)
+if ! nix profile list 2>/dev/null | grep -q "dotfiles-tools"; then
+  echo "📦 Installing tools via Nix..."
+  nix profile install .#default
+  echo "✅ Nix tools installed"
+else
+  echo "✅ Nix tools already installed"
+fi
 
 case "${unameOut}" in
   Linux*)
     echo "📦 Installing packages for Linux..."
-    # lazygit
-    if ! command -v lazygit &> /dev/null; then
-      echo "📦 Installing lazygit..."
-      LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" \
-        | grep -Po '"tag_name": "v\K[^"]*')
-      curl -fsSLo /tmp/lazygit.tar.gz \
-        "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
-      tar -xf /tmp/lazygit.tar.gz -C /tmp lazygit
-      sudo install /tmp/lazygit /usr/local/bin
-      rm /tmp/lazygit /tmp/lazygit.tar.gz
-      echo "✅ lazygit installed"
-    fi
-
     # asdf — skip install if already present (prebuild AMI has it)
     if ! command -v asdf &> /dev/null; then
       echo "📦 Installing asdf..."
