@@ -1,17 +1,5 @@
-# Path to your oh-my-zsh installation.
-export ZSH="$HOME/.oh-my-zsh"
-
-# Set theme
-ZSH_THEME="bira"
-
-# Custom folder for Oh My Zsh
-export ZSH_CUSTOM="$HOME/.config/zsh/custom"
-
-# Plugins
-plugins=(git fzf coder-tools)
-
-# Load Oh My Zsh
-source $ZSH/oh-my-zsh.sh
+# Nix profile
+[ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ] && source "$HOME/.nix-profile/etc/profile.d/nix.sh"
 
 # User configuration
 export EDITOR='nvim'
@@ -46,7 +34,7 @@ if [[ "$platform" == "darwin" ]]; then
   export PATH=$PATH:/Applications/Postgres.app/Contents/Versions/latest/bin
   export LDFLAGS="-L/opt/homebrew/lib"
   export CPPFLAGS="-I/opt/homebrew/include"
-  
+
   if command -v brew >/dev/null 2>&1; then
     BREW_PREFIX=$(brew --prefix)
     if [ -d "$BREW_PREFIX/opt/openjdk/bin" ]; then
@@ -58,6 +46,22 @@ fi
 
 # RVM (must be last PATH export)
 export PATH=$PATH:$HOME/.rvm/bin
+
+# zsh completions
+autoload -Uz compinit && compinit
+
+# Prompt with git branch via vcs_info
+autoload -Uz vcs_info
+precmd() { vcs_info }
+zstyle ':vcs_info:git:*' formats ' (%b)'
+PROMPT='%F{cyan}%n@%m%f:%F{yellow}%~%f%F{green}${vcs_info_msg_0_}%f %# '
+
+# fzf key bindings and completion
+eval "$(fzf --zsh)"
+
+# coder-tools plugin
+[ -f "$HOME/.config/zsh/custom/plugins/coder-tools/coder-tools.plugin.zsh" ] && \
+  source "$HOME/.config/zsh/custom/plugins/coder-tools/coder-tools.plugin.zsh"
 
 # FZF functions
 f() {
@@ -152,10 +156,10 @@ alias -g ...='../..'
 alias -g ....='../../..'
 alias -g .....='../../../..'
 
-# Aliases - Better ls with eza
-alias ls='eza --icons --group-directories-first'
-alias ll='eza -l --icons --no-user --group-directories-first  --time-style long-iso'
-alias la='eza -la --icons --no-user --group-directories-first  --time-style long-iso'
+# Aliases - ls
+alias ls='ls --color=auto'
+alias ll='ls -lh --color=auto'
+alias la='ls -lah --color=auto'
 alias reload='source ~/.zshrc'
 
 # Aliases - macOS Finder
