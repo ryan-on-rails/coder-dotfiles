@@ -64,48 +64,44 @@ add_git_alias "st" "status"
 add_git_alias "lg" "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 git config --global rerere.enabled true
 
-# Install Nix via Determinate Systems (idempotent — skips if already installed)
-if ! command -v nix &> /dev/null; then
-  echo "📦 Installing Nix (Determinate Systems)..."
-  curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
-    | sh -s -- install --no-confirm
-  echo "✅ Nix installed"
-fi
-
-# Source Nix daemon profile so `nix` is available in this shell session
-if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
-  source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-fi
-
-# Verify nix binary is available after sourcing daemon profile
-if ! command -v nix &> /dev/null; then
-  echo "❌ 'nix' not found after sourcing daemon profile — Nix install may have failed"
-  exit 1
-fi
-
-# Wait for Nix daemon socket to be ready (needed after fresh install)
-if ! nix store ping &> /dev/null; then
-  echo "⏳ Waiting for Nix daemon..."
-  for i in $(seq 1 30); do
-    nix store ping &> /dev/null && break
-    sleep 1
-  done
-  nix store ping &> /dev/null || { echo "❌ Nix daemon did not start"; exit 1; }
-fi
-
-# Install tools from flake (run from dotfiles repo root — script must be invoked from repo root)
-# "dotfiles-tools" matches the name = "dotfiles-tools" field in flake.nix — update both if renamed
-if ! nix profile list 2>/dev/null | grep -q "dotfiles-tools"; then
-  echo "📦 Installing tools via Nix..."
-  nix profile install .#default
-  echo "✅ Nix tools installed"
-else
-  echo "✅ Nix tools already installed"
-fi
-
 case "${unameOut}" in
   Linux*)
     echo "📦 Installing packages for Linux..."
+    # cloud-init already ran apt-get update, skip it if packages are present
+    if ! command -v rg &> /dev/null || ! command -v fd &> /dev/null; then
+      sudo apt-get update -qq
+      sudo apt-get install -y --no-install-recommends ripgrep fd-find
+    fi
+
+    # fd symlink
+    if command -v fdfind &> /dev/null && ! command -v fd &> /dev/null; then
+      sudo ln -sf "$(which fdfind)" /usr/local/bin/fd
+    fi
+
+    # fzf — binary download, avoids slow git clone
+    if ! command -v fzf &> /dev/null; then
+      echo "📦 Installing fzf..."
+      FZF_VERSION=$(curl -s "https://api.github.com/repos/junegunn/fzf/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+      curl -fsSLo /tmp/fzf.tar.gz \
+        "https://github.com/junegunn/fzf/releases/latest/download/fzf-${FZF_VERSION}-linux_amd64.tar.gz"
+      tar -xzf /tmp/fzf.tar.gz -C ~/.local/bin fzf
+      rm /tmp/fzf.tar.gz
+      echo "✅ fzf installed"
+    fi
+
+    # lazygit
+    if ! command -v lazygit &> /dev/null; then
+      echo "📦 Installing lazygit..."
+      LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" \
+        | grep -Po '"tag_name": "v\K[^"]*')
+      curl -fsSLo /tmp/lazygit.tar.gz \
+        "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+      tar -xf /tmp/lazygit.tar.gz -C /tmp lazygit
+      sudo install /tmp/lazygit /usr/local/bin
+      rm /tmp/lazygit /tmp/lazygit.tar.gz
+      echo "✅ lazygit installed"
+    fi
+
     # asdf — skip install if already present (prebuild AMI has it)
     if ! command -v asdf &> /dev/null; then
       echo "📦 Installing asdf..."
@@ -117,12 +113,20 @@ case "${unameOut}" in
       echo "✅ asdf installed"
     fi
 
+    asdf plugin add neovim 2>/dev/null || true
+    asdf plugin add kubectl 2>/dev/null || true
     # Install only — skips tools already compiled in the prebuild AMI
     asdf install
     echo "✅ asdf tools installed"
     ;;
   Darwin*)
     echo "📦 Installing packages for macOS..."
+    if command -v brew &> /dev/null; then
+      brew install ripgrep fd fzf lazygit
+    else
+      echo "⚠️  Homebrew not found. Please install brew first."
+    fi
+
     if ! command -v asdf &> /dev/null; then
       echo "📦 Installing asdf..."
       curl -LO "https://github.com/asdf-vm/asdf/releases/download/v0.16.6/asdf-v0.16.6-darwin-arm64.tar.gz"
@@ -130,6 +134,7 @@ case "${unameOut}" in
       rm asdf-v0.16.6-darwin-arm64.tar.gz
     fi
 
+    asdf plugin add neovim 2>/dev/null || true
     asdf install
     ;;
 esac

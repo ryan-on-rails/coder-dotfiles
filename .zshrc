@@ -1,6 +1,3 @@
-# Nix profile
-[ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ] && source "$HOME/.nix-profile/etc/profile.d/nix.sh"
-
 # User configuration
 export EDITOR='nvim'
 export PATH=$HOME/bin:/usr/local/bin:$PATH
