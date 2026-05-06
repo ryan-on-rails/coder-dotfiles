@@ -46,7 +46,8 @@
       "Bash(lazygit *)",
       "Bash(fzf *)",
       "Bash(nvim *)",
-      "Bash(coder *)"
+      "Bash(coder *)",
+      "Bash(psql *)"
     ],
     "ask": [
       "Bash(rm *)",
@@ -62,5 +63,11 @@
     ]
   },
   "outputStyle": "explanatory",
-  "includeCoAuthoredBy": false
+  "includeCoAuthoredBy": false,
+  "env": {
+    "PGHOST": "127.0.0.1",
+    "PGPASSWORD": "postgres",
+    "PGUSER": "postgres",
+    "PGDATABASE": "road_runner_development"
+  }
 }
