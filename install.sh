@@ -102,6 +102,18 @@ case "${unameOut}" in
       echo "✅ lazygit installed"
     fi
 
+    # gh CLI
+    if ! command -v gh &> /dev/null; then
+      echo "📦 Installing gh..."
+      GH_VERSION=$(curl -s "https://api.github.com/repos/cli/cli/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+      curl -fsSLo /tmp/gh.tar.gz \
+        "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz"
+      tar -xzf /tmp/gh.tar.gz -C /tmp "gh_${GH_VERSION}_linux_amd64/bin/gh"
+      mv "/tmp/gh_${GH_VERSION}_linux_amd64/bin/gh" ~/.local/bin/gh
+      rm -rf /tmp/gh.tar.gz "/tmp/gh_${GH_VERSION}_linux_amd64"
+      echo "✅ gh installed"
+    fi
+
     # asdf — skip install if already present (prebuild AMI has it)
     if ! command -v asdf &> /dev/null; then
       echo "📦 Installing asdf..."
@@ -122,7 +134,7 @@ case "${unameOut}" in
   Darwin*)
     echo "📦 Installing packages for macOS..."
     if command -v brew &> /dev/null; then
-      brew install ripgrep fd fzf lazygit
+      brew install ripgrep fd fzf lazygit gh
     else
       echo "⚠️  Homebrew not found. Please install brew first."
     fi
@@ -138,6 +150,21 @@ case "${unameOut}" in
     asdf install
     ;;
 esac
+
+# Install no-mistakes (agentic pipeline gate)
+if ! command -v no-mistakes &> /dev/null; then
+  echo "📦 Installing no-mistakes..."
+  NM_VERSION=$(curl -s "https://api.github.com/repos/kunchenguid/no-mistakes/releases" | grep -Po '"tag_name": "\K[^"]*' | head -1)
+  case "${unameOut}" in
+    Linux*)  NM_OS="linux";  NM_ARCH="amd64" ;;
+    Darwin*) NM_OS="darwin"; NM_ARCH="arm64" ;;
+  esac
+  curl -fsSLo /tmp/no-mistakes.tar.gz \
+    "https://github.com/kunchenguid/no-mistakes/releases/download/${NM_VERSION}/no-mistakes-${NM_VERSION}-${NM_OS}-${NM_ARCH}.tar.gz"
+  tar -xzf /tmp/no-mistakes.tar.gz -C ~/.local/bin no-mistakes
+  rm /tmp/no-mistakes.tar.gz
+  echo "✅ no-mistakes installed"
+fi
 
 # Install Claude Code CLI (node is available via asdf shims)
 if ! command -v claude &> /dev/null; then
