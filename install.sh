@@ -179,6 +179,14 @@ if ! npm list -g git-jump &> /dev/null 2>&1; then
   echo "✅ git-jump installed"
 fi
 
+# Clone firstmate into ~/workspace/firstmate
+if [ ! -d "$HOME/workspace/firstmate" ]; then
+  echo "📦 Cloning firstmate..."
+  mkdir -p "$HOME/workspace"
+  git clone https://github.com/kunchenguid/firstmate "$HOME/workspace/firstmate"
+  echo "✅ firstmate cloned to ~/workspace/firstmate"
+fi
+
 echo ""
 echo "✨ Dotfiles installation complete!"
 echo "🔄 Restart your shell or run: exec zsh"
